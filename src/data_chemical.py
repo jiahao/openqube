@@ -2,9 +2,10 @@
 Container for chemical data
 Created on Jan 30, 2011
 
-@author: cjh
+@author Jiahao Chen
 '''
 
+## A periodic table with element names
 Elements = [x.upper() for x in \
            ['H' , 'He',
             'Li', 'Be', 'B' , 'C' , 'N', 'O' , 'F' , 'Ne',
@@ -27,6 +28,7 @@ Elements = [x.upper() for x in \
                        ]
            ]
 
+## If run as main, prints out all the elements
 if __name__ == '__main__':
     for n, e in enumerate(Elements):
         print n + 1, e
