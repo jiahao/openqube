@@ -252,38 +252,3 @@ assuming it's the same as alpha.")
 
         return PA + PB
 
-
-###
-
-def SanitizeRem(buf):
-    newbuf = []
-    keyword = ''
-    for l in buf:
-        if l[0] == '!':
-            continue
-        t = l.split()
-        if len(t) >= 2:
-            keyword = t[0]
-            if keyword != 'jobtype':
-                newbuf.append(l)
-
-    return newbuf
-
-
-def SanitizeMolecule(filename):
-    """Sometimes Q-Chem fails to write correct optimized geometry block
-    For now the sticky electron code only works with Cartesian formatted
-    geometry
-    Super cheat - use babel to generate correct geometry block"""
-
-    os.system('babel -iqcout ' + filename + ' -oqcin TMP')
-    buf = []
-    state = None
-    for l in open('TMP'):
-        if '$end' in l:
-            state = None
-        elif '$molecule' in l:
-            state = 'add'
-        elif state == 'add':
-            buf.append(l)
-    return buf

@@ -10,16 +10,11 @@ excited states
 
 from numpy import array, dot, zeros
 from numpy.linalg import norm, svd
+from data import eV, Angstrom
+from analysis_geometry import Centroid, MomentOfInertiaTensor
+from analysis_exciton import SpinMultiplicity, nearest, ForsterCoupling, ForsterOrientationFactor
 
 StrengthThreshold = 0.1
-eV = 0.03674932534 #converts eV to Hartree
-Angstrom = 1.889725989
-Debye = 1/2.5417462
-
-SpinMultiplicity = {
-    "Singlet":0,
-    "Triplet":2,
-}
 
 class ElectronicState:
     def __init__(self):
@@ -62,37 +57,6 @@ class ModelChemistry:
             return ''
         else:
             return method+'/'+basis
-
-def MomentOfInertiaTensor(R, Weights = None, Center = True):
-    "Moment of inertia tensor for a bunch of points, optionally weighted"
-    I = zeros((3,3))
-    if Center == True:
-        C = Centroid(R, Weights)
-    elif Center is None:
-        C = zeros(3)
-    else:
-        C = Center
-
-    for idx, p in enumerate(R):
-        weight = 1 if Weights is None else Weights[idx]
-        for i in range(3):
-            for j in range(3):
-                I[i,j] += weight * (p[i]-C[i]) * (p[j]-C[j])
-    return I
-
-def Centroid(R, Weights = None):
-    "Centroid for a bunch of points, optionally weighted"
-    C = zeros((3,))
-    
-    for idx, p in enumerate(R):
-        weight = 1 if Weights is None else Weights[idx]
-        C += weight * p
- 
-    normalization = len(R) if Weights is None else sum(Weights)
-    if abs(normalization) < 0.001:
-        normalization = 1.0
-
-    return C/normalization
 
 def ParseFED(filename, doPlot = False):
     """
@@ -438,55 +402,6 @@ def ParseFED(filename, doPlot = False):
         print n1, n2, ForsterOrientationFactor(MonomerTransitionDipoles[n1], MonomerTransitionDipoles[n2], r,),
         print
     return States, FEDCoupling
-
-
-
-def nearest(x, things):
-    y = sorted([(abs(z-x), z) for z in things])
-    return y[0][1]
-
-
-
-def ForsterCoupling(d1, d2, r):
-    """
-    This function calculates the Forster coupling between two chromophores
-    using the dipole-dipole coupling approximation.
-
-    @param d1 Transition dipole of 1st chromophore in atomic units (3-vector)
-    @param d2 Transition dipole of 2nd chromophore in atomic units (3-vector)
-    @param r  Displacement vector between the two chromophores in atomic units
-    @returns The coupling matrix element in atomic units
-    @f[
-    V = \frac {3 (d_1 \cdot \hat r) (d_2 \cdot \hat r) - (d_1 \cdot d_2)} {\vert r \vert^3 }
-    @f]
-
-    @note the formula doesn't care which direction the displacemnent vector is in
-    """
-    normr = norm(r)
-    rn = r / normr ##Normalized distance vector
-    Coupling = (3 * dot(d1, rn) * dot(d2, rn) - dot(d1, d2)) / normr**3
-    return Coupling
-
-def ForsterOrientationFactor(d1, d2, r):
-    """
-    This function calculates the Forster orientation factor between two chromophores
-    using the dipole-dipole coupling approximation.
-
-    @param d1 Transition dipole of 1st chromophore in atomic units (3-vector)
-    @param d2 Transition dipole of 2nd chromophore in atomic units (3-vector)
-    @param r  Displacement vector between the two chromophores in atomic units
-    @returns The coupling matrix element in atomic units
-    @f[
-    \kappa
-    @f]
-
-    @note the formula doesn't care which direction the displacemnent vector is in
-    """
-    rn =  r / norm(r) ##Normalized distance vector
-    d1n = d1/ norm(d1)
-    d2n = d2/ norm(d2)
-    Factor = 3 * dot(d1n, rn) * dot(d2n, rn) - dot(d1n, d2n)
-    return Factor
 
 if __name__ == '__main__':
     import glob, sys

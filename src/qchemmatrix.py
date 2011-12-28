@@ -8,7 +8,7 @@ import os, scipy
 
 from data import Elements
 from qchemout import QChemOutput
-from qchemoutbin import ReadOverlap, ReadDensity
+from qchemoutbin import QChemBinaryOutput
 
 class FragmentData:
     "Container for nuclear and basis function information"
@@ -152,8 +152,9 @@ calculation would overwrite the original input file'
 
     n = sum(Output.BasisCount)
 
-    S = ReadOverlap(savepath, n)
-    P = ReadDensity(savepath, n)
+    QCBin = QChemBinaryOutput(savepath)
+    S = QCBin.OverlapMatrix(n)
+    P = QCBin.DensityMatrix(n)
 
     ##########################
     # Populate fragment info #

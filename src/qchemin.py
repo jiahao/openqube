@@ -419,20 +419,20 @@ def QChemInputForElectrostaticEmbedding(ResID, CHARMM_CARD_file,
     Create a Q-Chem input deck to calculate the electrostatic field at each MM
     atom due to the quantum-mechanical region.
 
-    @parameter ResID CHARMM ResID which defines the embedded QM region 
+    @param ResID CHARMM ResID which defines the embedded QM region 
 
-    @parameter CHARMM_CARD_file Name of CHARMM CARD file containing molecular
+    @param CHARMM_CARD_file Name of CHARMM CARD file containing molecular
     coordinates
 
-    @parameter CHARMM_RTFile Name of CHARMM Residue Topology File containing
+    @param CHARMM_RTFile Name of CHARMM Residue Topology File containing
     force field parameters (notably, atomic charges) (string or iterable)
 
-    @parameter InputDeck Q-Chem input deck. (Optional.) \
+    @param InputDeck Q-Chem input deck. (Optional.) \
     If value is a string, is treated as a filename for QChemInput object. \
     If it is a QChemInput object, then it will be modified. \
     If not specified, a new QChemInput object will be created.
 
-    @parameter NewFileName A new filename for InputDeck. (Optional.)
+    @param NewFileName A new filename for InputDeck. (Optional.)
 
     @returns A Q-Chem input deck that is ready to be written and executed.
 

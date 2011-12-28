@@ -28,6 +28,13 @@ Elements = [x.upper() for x in \
                        ]
            ]
 
+#The working assumption is that everything in the code is handled in atomic
+#units until it's time to print something output or interface
+
+eV = 0.03674932534 #converts eV to Hartree
+Angstrom = 1.889725989
+Debye = 1/2.5417462
+
 ## If run as main, prints out all the elements
 if __name__ == '__main__':
     for n, e in enumerate(Elements):
