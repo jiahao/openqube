@@ -1,9 +1,10 @@
 #!/usr/bin/env python
-import sys
 """
 parseci.py: Groks CI vector and orbitals from MOLPRO output file
 Jiahao Chen, 20061011
 """
+
+import sys
 eV = 0.0367493245
 Debye = 0.3934302
 
@@ -18,10 +19,9 @@ ECHOINPUT = False
 VERBOSE = True
 
 #Converts MOLPRO configuration string into occupation number representation dictionary
-def onr(config):
+def onr(molpro_config):
     occnos = {'alpha':[],'beta':[]}
-    for i in xrange(len(config)):
-        orbital = config[i]
+    for orbital in molpro_config:
         if orbital=='2':
             occnos['alpha'].append(1)
             occnos['beta'].append(1)
@@ -39,9 +39,9 @@ def onr(config):
     return occnos
 
 #Calculates magnetic spin number of a given configuration
-def spin(config):
+def spin_number(molpro_config):
     totalspin = 0
-    for orbitalocc in config:
+    for orbitalocc in molpro_config:
         if orbitalocc == 'a':
             totalspin += 0.5
         elif orbitalocc == 'b':
@@ -49,9 +49,9 @@ def spin(config):
     return totalspin
 
 #Counts number of electrons in a given configuration
-def numelecs(config):
+def numelecs(molpro_config):
     num = 0
-    for orbitalocc in config:
+    for orbitalocc in molpro_config:
         if orbitalocc == 'a':
             num += 1
         elif orbitalocc == 'b':
@@ -71,13 +71,13 @@ def deltaorbs(refconfig, baseconfig):
     #determine nature of excitations
     holes = []
     particles = []
-    for i in xrange(len(refconfig)):
+    for ii in range(len(refconfig)):
         for spin in ['alpha', 'beta']:
-            popchange = exc_onr[spin][i]-ref_onr[spin][i]
+            popchange = exc_onr[spin][ii]-ref_onr[spin][ii]
             if popchange == 1: #Found a particle-type excitation
-                particles.append((i,spin))
+                particles.append((ii,spin))
             elif popchange == -1: #Found a hole-type excitation
-                holes.append((i,spin))
+                holes.append((ii,spin))
 
     output = '('
     for hole in holes:
@@ -90,22 +90,22 @@ def deltaorbs(refconfig, baseconfig):
 
 #---Parse command-line options---
 for options in sys.argv: #command line
-  if options in ['-d', '--debug']:
-    DEBUG = True
-    sys.argv.pop(0)
-  elif options in ['-e', '--echo']:
-    ECHOINPUT = True
-    sys.argv.pop(0)
-  elif options in ['-v', '--verbose']:
-    VERBOSE = True
-    sys.argv.pop(0)
-  elif options in ['-q', '--quiet']:
-    VERBOSE = False
-    ECHONINPUT = False
-    DEBUG = False
-    sys.argv.pop(0)
-  elif options in ['-h,' '--help', '-?']:
-    print """parseci.py : Simplifies MOLPRO output
+    if options in ['-d', '--debug']:
+        DEBUG = True
+        sys.argv.pop(0)
+    elif options in ['-e', '--echo']:
+        ECHOINPUT = True
+        sys.argv.pop(0)
+    elif options in ['-v', '--verbose']:
+        VERBOSE = True
+        sys.argv.pop(0)
+    elif options in ['-q', '--quiet']:
+        VERBOSE = False
+        ECHONINPUT = False
+        DEBUG = False
+        sys.argv.pop(0)
+    elif options in ['-h,' '--help', '-?']:
+        print """parseci.py : Simplifies MOLPRO output
 Options
 -d, --debug   : Print debugging information
 -e, --echo    : Echo MOLPRO output file as it is being read
@@ -113,7 +113,8 @@ Options
 -q, --quiet   : Minimal information
 -h, --help    : Print this help screen
     """
-    sys.exit
+    exit()
+
 #---Get file name and open file---#000000#FFFFFF-------------------------------
 try:
     mpoutfn=sys.argv[1]
@@ -132,7 +133,7 @@ for line in mpoutf:
         if VERBOSE:
             print 'Reading geometry'
         #Skip to start of XYZ geometry
-        for i in xrange(4):
+        for _ in range(4):
             line = mpoutf.next()
             if ECHOINPUT:
                 print 'Read: ',line,
@@ -142,33 +143,31 @@ for line in mpoutf:
         #if VERBOSE:
         #    print 'Geometry has %d atoms' % numatoms
         
-	#---Read coordinates---
+        #---Read coordinates---
         atoms = []
         xyz = []
-	numatoms = 0
+        numatoms = 0
         #If there is a comment line, skip it
-	#comment  = mpoutf.next().strip()
+        #comment  = mpoutf.next().strip()
         #toks = comment.replace(',',' ').split()
-	toks = line.split()
-	try: #Test if there are three numbers following an atom
-	    float(toks[3])
-	    float(toks[4])
-	    float(toks[5])
-	except: #Oops, doesn't work, it's a comment
-	    if ECHOINPUT:
+        toks = line.split()
+        try: #Test if there are three numbers following an atom
+            coord = map(float, toks[3:5])
+        except (IndexError, ValueError): #Oops, doesn't work, it's a comment
+            if ECHOINPUT:
                 print 'Read: ',line,
             if VERBOSE:
                 print line
-	    start=0	
-	else: #Format matches xyz
-	    while len(toks)>0: #Read until line is blank
+            start=0        
+        else: #Format matches xyz
+            while len(toks)>0: #Read until line is blank
                 numatoms+=1
-		if DEBUG:
+                if DEBUG:
                     print toks
                 atoms.append(toks[1])
-                xyz.append((float(toks[3]),float(toks[4]),float(toks[5])))
-	        line=mpoutf.next()
-	        if ECHOINPUT:
+                xyz.append(coord)
+                line=mpoutf.next()
+                if ECHOINPUT:
                     print 'Read: ',line,
                 toks=line.split()
         if VERBOSE:
@@ -249,17 +248,17 @@ for line in mpoutf:
        
         while len(toks)>0: #Loop over molecular orbital
             try:
-	       orbnum=int(toks.pop(0).split('.')[0])
-	    except:
-	       break
-	    #Read occupation number
-	    tok = toks.pop(0)
-	    #In old MOLPRO versions, sometimes have '+' and '-' occupations
-	    if tok == '-':
-	        occno = 1
-	    elif tok == '+':
-	        occno = 1
-	    else:
+                orbnum=int(toks.pop(0).split('.')[0])
+            except ValueError:
+                break
+            #Read occupation number
+            tok = toks.pop(0)
+            #In old MOLPRO versions, sometimes have '+' and '-' occupations
+            if tok == '-':
+                occno = 1
+            elif tok == '+':
+                occno = 1
+            else:
                 occno =float(tok)
             if occno == 2: #Population is not exactly 2, guess start of active space
                 orbitalactivespacebegin = orbnum
@@ -277,11 +276,11 @@ for line in mpoutf:
             while len(toks)>0: #Loop over line entry
                 while len(toks)>0: #Loop over entry in line
                     aoid+=1
-		    #Sometimes split() gives bizarre null bytes
-		    tok = toks.pop(0).replace('\x00','')
-		    while tok == '':
-		        tok = toks.pop(0).replace('\x00','')
-		    coeff=float(tok)
+                    #Sometimes split() gives bizarre null bytes
+                    tok = toks.pop(0).replace('\x00','')
+                    while tok == '':
+                        tok = toks.pop(0).replace('\x00','')
+                    coeff=float(tok)
                     if abs(coeff) > THRESH_AO:
                         thismo.append((aoid,coeff))
                         print 'Orbital %d has AO (#%2d: %s on atom %d) with coefficient %f (weight %f)' % (orbnum, aoid, aokey[aoid][1], aokey[aoid][0], coeff, coeff**2)
@@ -307,10 +306,10 @@ for line in mpoutf:
         if VERBOSE:
             print 'Found CI vector'
         #Initialize state data
-        for i in xrange(0,numstates):
-                state[i]=[] #state is a list of lists
+        for i in range(0,numstates):
+            state[i]=[] #state is a list of lists
         #Skip two lines, process the thirs
-        for i in xrange(3):
+        for _ in range(3):
             line=mpoutf.next()
             if ECHOINPUT:
                 print 'Read: ',line,
@@ -318,7 +317,7 @@ for line in mpoutf:
         #---Read CI vector---
         while len(toks)>0: #Iterate over configurations
             config=toks.pop(0)
-            for i in xrange(0,numstates):
+            for i in range(0,numstates):
                 #Advance to start of configs and coefficients
                 if len(toks)==0:
                     line=mpoutf.next()
@@ -327,11 +326,11 @@ for line in mpoutf:
                     toks=line.split()
 
                 try: #hack to not crash when non-unique state numbers exist
-		    coeff=float(toks.pop(0))
-		except ValueError:
-		    print 'WARNING: Found multiple states with same state numbers!!'
-		    numstates = i
-		else:    
+                    coeff=float(toks.pop(0))
+                except ValueError:
+                    print 'WARNING: Found multiple states with same state numbers!!'
+                    numstates = i
+                else:    
                     if abs(coeff) > THRESH_CI:
                         state[i].append((config,coeff))
                         if VERBOSE:
@@ -350,7 +349,7 @@ for line in mpoutf:
         #Skip text label
         toks.pop(0)
         toks.pop(0)
-        for i in xrange(0,numstates):
+        for i in range(0,numstates):
             if len(toks)==0:
                 line=mpoutf.next()
                 if ECHOINPUT:
@@ -377,9 +376,9 @@ for line in mpoutf:
         print 'The ground state has dominant configuration %s with coefficient %f (probability %f)' % (maxgsconfig, maxgsweight, maxgsweight**2)
         if abs(maxgsweight) < 0.5**0.5:
             print 'Warning, ground state appears to not have any one dominant configuration!'
-	    if VERBOSE:
-	    	print 'The configurations with weights > %f are' % THRESH_CI
-	    	for config in state[0]:
+            if VERBOSE:
+                print 'The configurations with weights > %f are' % THRESH_CI
+                for config in state[0]:
                     print '\tCoefficient %f (Density %f) \tConfiguration %s' % (config[1], config[1]**2, config[0])
 
         #Convert configuration into more convenient data structure in occupation number representation
@@ -388,12 +387,12 @@ for line in mpoutf:
         numorbs = orbitalactivespaceend - orbitalactivespacebegin - 1
         print 'The effective active space is %d electrons in %d orbitals' % (numelecs(maxgsconfig), numorbs)
         print 'Excited states:'
-        for i in xrange(1,numstates):
+        for i in range(1,numstates):
             print 'State %d:\tExcitation energy: %f eV' % (i+1,(statenrgs[i] - statenrgs[0])/eV)
             #Convert ONR configuration into orbital (de)population notation:
             for config in state[i]:
                 excitations=deltaorbs(maxgsconfig, config[0])
-                print '\tCoefficient %f (Density %f) \tExcitation %s\tm_s %d --> %d' % (config[1], config[1]**2, excitations, spin(maxgsconfig), spin(config[0]))
+                print '\tCoefficient %f (Density %f) \tExcitation %s\tm_s %d --> %d' % (config[1], config[1]**2, excitations, spin_number(maxgsconfig), spin_number(config[0]))
             #Compute norm
             norm = 0
             for config in state[i]:

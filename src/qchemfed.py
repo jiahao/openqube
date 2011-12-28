@@ -8,8 +8,8 @@ for the energies and transition dipoles of bright
 excited states
 """
 
-from numpy import array, average, dot, zeros, arccos, pi, log
-from numpy.linalg import norm
+from numpy import array, dot, zeros
+from numpy.linalg import norm, svd
 
 StrengthThreshold = 0.1
 eV = 0.03674932534 #converts eV to Hartree
@@ -23,10 +23,13 @@ SpinMultiplicity = {
 
 class ElectronicState:
     def __init__(self):
-        self.Index = None
-        self.ExcitationEnergy = None
         self.Amplitudes = {} # Ideally we want this to be a sparse matrix!
                              # But we will make do with a dictionary[(OCC, VIRT)] = ampl
+        self.ExcitationEnergy = None
+        self.Index = None
+        self.Strength = None #Oscillator strength
+        self.TransitionDipole = None #Transition dipole
+
     def __repr__(self):
         buf = [str(a)+' '+str(b) for a, b in self.__dict__.items()]
         return '\n'.join(buf)
@@ -62,7 +65,6 @@ class ModelChemistry:
 
 def MomentOfInertiaTensor(R, Weights = None, Center = True):
     "Moment of inertia tensor for a bunch of points, optionally weighted"
-    from numpy import zeros
     I = zeros((3,3))
     if Center == True:
         C = Centroid(R, Weights)
@@ -80,14 +82,13 @@ def MomentOfInertiaTensor(R, Weights = None, Center = True):
 
 def Centroid(R, Weights = None):
     "Centroid for a bunch of points, optionally weighted"
-    from numpy import zeros
     C = zeros((3,))
     
     for idx, p in enumerate(R):
         weight = 1 if Weights is None else Weights[idx]
         C += weight * p
  
-    normalization = idx+1 if Weights is None else sum(Weights)
+    normalization = len(R) if Weights is None else sum(Weights)
     if abs(normalization) < 0.001:
         normalization = 1.0
 
@@ -286,7 +287,7 @@ def ParseFED(filename, doPlot = False):
             y = [state.Strength for state in States]
             plt.stem(x, y, markerfmt='*', linefmt='k-')
             for idx, state in enumerate(States):
-               plt.text( x[idx], y[idx], str(state.Index), horizontalalignment='left')
+                plt.text( x[idx], y[idx], str(state.Index), horizontalalignment='left')
                 
             plt.xlabel('Wavelength (nm)')
             plt.ylabel('Oscillator strength')
@@ -294,7 +295,6 @@ def ParseFED(filename, doPlot = False):
 
             plt.show()
 
-        from numpy.linalg import eig
         Inertia = MomentOfInertiaTensor(Coords)
 
         #Save monomer data
@@ -321,7 +321,7 @@ def ParseFED(filename, doPlot = False):
             numstates = pickle.load(f)
             MonomerTransitionDipoles = []
             #print 'Transition dipoles:'
-            for i in range(numstates):
+            for _ in range(numstates):
                 tdip = pickle.load(f)
                 MonomerTransitionDipoles.append(tdip)
                 #print i, tdip
@@ -344,10 +344,9 @@ def ParseFED(filename, doPlot = False):
     I1 = MomentOfInertiaTensor(Coords[:numatoms,:])
     I2 = MomentOfInertiaTensor(Coords[numatoms:,:])
     
-    from numpy.linalg import svd, eig
-    Um, Sm, Vm = svd(MonomerInertia)
-    U1, S1, V1 = svd(I1)
-    U2, S2, V2 = svd(I2)
+    _, _, Vm = svd(MonomerInertia)
+    U1, _, _ = svd(I1)
+    U2, _, _ = svd(I2)
     M1 = dot(U1, Vm)
     M2 = dot(U2, Vm)
     if doPlot:
@@ -508,8 +507,8 @@ with specified output file(s) on command line"""
     filenames = dict().fromkeys(filenames).keys()
     filenames.sort()
 
-    doPlot = True if len(filenames) == 1 else False
+    doThisPlot = True if len(filenames) == 1 else False
     for fname in filenames:
-        data = ParseFED(fname, doPlot)
+        data = ParseFED(fname, doThisPlot)
 
 

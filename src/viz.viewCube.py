@@ -96,9 +96,8 @@ def RenderCubeInVTK(filename = 'test.cube', mindatum = 0.0, maxdatum = 0.0):
     ###################
     #Calculate scalings
 
-    """VTK only knows how to render integer data in the interval [0,255] or [0,65535]
-
-    Here, we calculate scaling factors to map the cube data to the interval."""
+    #VTK only knows how to render integer data in the interval [0,255] or [0,65535]
+    #Here, we calculate scaling factors to map the cube data to the interval.
 
     if mindatum == maxdatum == 0.0:
         if DEBUG:
@@ -127,12 +126,9 @@ def RenderCubeInVTK(filename = 'test.cube', mindatum = 0.0, maxdatum = 0.0):
     ################################
     # Calculate opacity transfer map
 
-    """The code here differentiates between two cases:
-
-    1. the scalar data are all positive, so it's just a simple linear ramp
-
-    2. the scalar data are signed, so do two linear ramps
-    """
+    #The code here differentiates between two cases:
+    #1. the scalar data are all positive, so it's just a simple linear ramp
+    #2. the scalar data are signed, so do two linear ramps
 
     opacityTransferFunction = vtk.vtkPiecewiseFunction()
 
@@ -213,10 +209,10 @@ def RenderCubeInVTK(filename = 'test.cube', mindatum = 0.0, maxdatum = 0.0):
     # Use level of detail prop so that it won't take forever to look around
 
     volume = vtk.vtkLODProp3D()
-    id = volume.AddLOD(volumeMapper, volumeProperty, 0.)
-    volume.SetLODProperty(id, volumeProperty)
-    id = volume.AddLOD(volumeMapperCoarse, volumeProperty, 0.)
-    volume.SetLODProperty(id, volumeProperty)
+    id1 = volume.AddLOD(volumeMapper, volumeProperty, 0.)
+    volume.SetLODProperty(id1, volumeProperty)
+    id2 = volume.AddLOD(volumeMapperCoarse, volumeProperty, 0.)
+    volume.SetLODProperty(id2, volumeProperty)
 
     # At this point, we can position and orient the volume
 
@@ -440,16 +436,13 @@ def ScanCubeForRange(filename = 'test.cube'):
 
 
 if __name__ == '__main__':
-    mindatum = maxdatum = 0.0
-
     import sys
-
     if len(sys.argv) > 1:
         cubefilename = sys.argv[1]
         RenderCubeInVTK(cubefilename)
 
     else:
-        "Nothing specified, goes into auto-scanning mode"
+        #Nothing specified, goes into auto-scanning mode
 
         print """I will now go ahead and render all Gaussian cube files in the
 current directory to PNG files. To avoid this behavior, specify the following command-line

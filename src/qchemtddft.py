@@ -91,12 +91,12 @@ class DataRecorder:
         #TDATransitionAmplitudes = numpy.ndarray((maxstates, maxamplitudestda))
         #TransitionAmplitudes = numpy.ndarray((maxstates, maxamplitudestddft))
 
-        for stateid, _, multiplicity, _, strength, amplitudes in \
+        for stateid, _, multiplicity, _, strength, _ in \
                 self.tddft_tda:
             TDAMultiplicities[stateid] = multiplicity
             TDAOscillatorStrengths[stateid] = strength
         
-        for stateid, _, multiplicity, _, strength, amplitudes in self.tddft:
+        for stateid, _, multiplicity, _, strength, _ in self.tddft:
             Multiplicities[stateid] = multiplicity
             OscillatorStrengths[stateid] = strength
 

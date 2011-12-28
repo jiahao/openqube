@@ -110,9 +110,9 @@ def RenderVTKVolume(image, volprops):
 
 def main():
     bounds = (-5, 5, -5, 5, -5, 5)
-    coords = [(-1, 0, 0), (1, 0, 0)]
-    weights = (1, -1)
-    sizes = (1, 1)
+    #coords = [(-1, 0, 0), (1, 0, 0)]
+    #weights = (1, -1)
+    #sizes = (1, 1)
 
     MaxScaledVal = 65536
     ZeroPoint = int(MaxScaledVal / 2)

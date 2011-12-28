@@ -9,10 +9,11 @@ Jiahao Chen <jiahao@mit.edu> 2011-04-20
 """
 
 import logging, numpy, os, tempfile, unittest, UserDict
-from subprocess import Popen, PIPE
-import Stencil
-from sysutils import logged_write
 from copy import deepcopy
+from subprocess import Popen, PIPE
+
+import stencil
+from sysutils import logged_write
 
 ##Converts energies to gromacs units
 eV = 96.485
@@ -1024,8 +1025,8 @@ def MOPACGetEnergyForceAndDerivs(paramvals, paramkeys, geometry, keywords,
 
     @param parfilename Name of the parameter file to be generated
     @param inputfilename Name of the MOPAC input deck to be generated
-    @param Stc a Stencil.Stencil to be used. (Default:
-           Stencil.FirstOrderCentralDifferenceStencil )
+    @param Stc a stencil.Stencil to be used. (Default:
+           stencil.FirstOrderCentralDifferenceStencil )
     @param step Magnitude of finite difference step to be used in Stc.
            (Default: 0.001)
     """
@@ -1040,7 +1041,7 @@ def MOPACGetEnergyForceAndDerivs(paramvals, paramkeys, geometry, keywords,
 
     #Assign default stencil
     if Stc == None:
-        Stc = Stencil.FirstOrderCentralDifferenceStencil()
+        Stc = stencil.FirstOrderCentralDifferenceStencil()
     
     keys_oldens = deepcopy(keywords)
     keys_oldens['OLDENS'] = None

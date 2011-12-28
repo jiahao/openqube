@@ -51,7 +51,7 @@ else:
                 try:
                     numatoms=int(line)
                 except ValueError:
-                    "" #Do nothing, this is the wrong line
+                    pass #Do nothing, this is the wrong line
                 else:
                     xyztraj = xyztraj + str(numatoms)
                     readmode=2
@@ -103,4 +103,5 @@ else:
     print 'Writing trajectory of %d geometries (including original) to %s' % (numgeoms, xyzname)
     xyzfile=open(xyzname,'w')
     xyzfile.write(xyztraj+'\n')
-    xyzfile.close
+    xyzfile.close()
+
