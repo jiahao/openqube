@@ -1,0 +1,129 @@
+#!/bin/bash
+#
+# MOLPRO2VMD
+# 20060313 Jiahao Chen
+#
+# Function:
+# Converts MOLPRO output with some kind of partial charge calculations to a VMD script
+# that plots a pretty representation. This is not a very intelligent script so be sure
+# to check the output before actually loading it into VMD!
+#
+# Requirements
+# 1. MOLPRO output file $1.out
+# 2. MOLPRO punch file $1.pun (the latter is needed only if you want to extract an XYZ file)
+#
+# Input
+# A list of names (without any extensions) to parse 
+#
+# Output
+# Corresponding .vmd files which can be loaded into VMD
+#
+
+while [ -n "$1" ]; do
+
+  if [ -e $1.out ]; then
+    echo $0: Found $1.out
+    #Part I. Make XYZ file
+    
+    # figure out how many atoms
+    numlines=`grep -B 2 Bond $1.out | head -n 1 | awk '{print $1}'`
+
+    if [ -e $1.xyz ]; then
+      echo $0: $1.xyz found: not generating geometry file $1.xyz
+    else
+      if [ -e $1.pun ]; then
+        if [ -e $1.xyz0 ]; then
+          echo $0 WARNING: overwriting temporary file $1.xyz0
+        fi
+        echo $numlines >$1.xyz0
+        echo >>$1.xyz0
+        grep ATOM $1.pun | tail -$numlines | awk '{print $3 " "$5 " " $6 " " $7}' >>$1.xyz0
+        #MOLPRO's punch file writes coordinates in Bohr, need to convert back to Angstrom
+        ~hudock/util/bohr_ang <$1.xyz0 >$1.xyz
+        rm $1.xyz0
+      else
+        echo $0 WARNING: $1.pun not found: geometry file $1.xyz not generated
+        echo $0 ERROR: $1.xyz not found. You must edit $1.vmd to load the correct file
+      fi
+    fi
+
+    #Part II. Write VMD script
+    if [ -e $1.vmd ]; then
+      echo $0 WARNING: Overwriting output file $1.vmd
+    fi
+
+    echo \#!`which vmd` > $1.vmd
+    echo cd `pwd` >> $1.vmd
+    echo cd `pwd | sed -e 's/\/usr1\/cjh/Y:/'` >> $1.vmd
+    cat << ENDVMD >> $1.vmd
+material add Glass
+material change ambient Glass 0.0
+material change specular Glass 0.5
+material change diffuse Glass 0.65
+material change shininess Glass 0.53
+material change opacity Glass 0.15
+lassign [mol load xyz "$1.xyz"] molid
+color Display {Background} white
+color Name {H} black
+color Type {H} black
+draw color black
+axes location off
+display projection orthographic
+mol delrep 0 \$molid
+mol representation Licorice 0.1 30.0 30.0
+mol color Name
+mol selection {all}
+mol material Opaque
+mol addrep \$molid
+ENDVMD
+#Unused VMD code fragments
+#proc label_atom {molid atomid label_string} {
+#set sel [atomselect \$molid \"index \$atomid\"]
+#lassign [\$sel get {x y z}] coord
+#draw text \$coord \$label_string
+#}
+
+
+    chmod +x $1.vmd
+
+# Part III. Extract partial charges
+
+    # This bit extracts monopole information if you ran the DMA program in MOLPRO
+    #grep Q00 $1.out | awk '{print "label_atom $molid", NR-1, $3}' >>$1.vmd
+    grep Q00 $1.out | awk '{print "[atomselect \$molid \"index ", NR-1,"\"] set charge ",$3}' >> $1.vmd
+
+    # This bit extracts Mulliken charges from MOLPRO's POP output
+    # WARNING: if you did both POP and DMA, The VMD script will end up overwriting the DMA charges
+    grep -A $numlines Charge $1.out | tail -n $numlines | awk '{print "[atomselect \$molid \"index ", NR-1,"\"] set charge ",$9$10}' >> $1.vmd 
+
+    cat << ENDVMD2 >> $1.vmd
+mol representation VDW 0.45 60
+mol color Charge
+# The charge scale by default runs from -1 to +1. Change the limits if necessary
+# on the following line  to "mol scaleminmax 0 $molid [low] [high]" or delete this
+# line to have VMD scale it automatically
+mol selection {all}
+mol material Glass
+mol addrep \$molid
+mol scaleminmax \$molid 1 -0.5 0.5
+ENDVMD2
+
+    # Part IV. Draw molecular dipole
+    # Extract dipole moment
+    dx=`grep dipole $1.out | awk '{print $4}'`
+    dy=`grep dipole $1.out | awk '{print $5}'`
+    dz=`grep dipole $1.out | awk '{print $6}'`
+
+    # Draw dipole as a cone radiating from the origin
+    #echo draw cone {0 0 0} {$dx $dy $dz} radius 0.1 >>$1.vmd
+    ## Compute molecular electric dipole moment in Debye
+    ## 1 au = 2.5417463126 D
+    #echo draw text {$dx $dy $dz} \"`echo sqrt\($dx^2+$dy^2+$dz^2\)*2.54217463 | bc` D\" >>$1.vmd
+
+    # I'm done with $1 now
+    echo $0: Wrote $1.vmd successfully
+  else #Can't find $1.out
+    echo $0 ERROR: Cannot find $1.out, I can\'t do anything
+  fi
+  shift #Next in line!
+done
