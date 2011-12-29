@@ -11,11 +11,6 @@ excited states
 from numpy import dot
 from numpy.linalg import norm
 
-SpinMultiplicity = {
-    "Singlet":0,
-    "Triplet":2,
-}
-
 def nearest(x, things):
     "Returns the element in an iterable things closest to the querying x"
     y = sorted([(abs(z-x), z) for z in things])
