@@ -19,6 +19,8 @@ logging.basicConfig()
 logger = logging.getLogger(__name__)
 
 class QChemInput:
+    """
+    """
     def __init__(self, InputDeckFilename = None):
         logger.debug('Initializing new QChemInput() with filename: %s',
                      InputDeckFilename)
@@ -31,7 +33,15 @@ class QChemInput:
 
 
     def isValid(self):
-        "Checks that data contained can be used to make a valid input deck"
+        """
+        Checks that data contained can be used to make a valid input deck
+
+        @todo
+        If the first job has READ in the geometry, make sure scratch file
+        exists and -save is used.
+
+        @sa Q-Chem 4.0 manual, section 3.2.1
+        """
         #Delete possibly empty first job
         if repr(self.jobs[0]) == '':
             self.jobs.pop(0)
@@ -50,10 +60,16 @@ class QChemInput:
 
     def write(self, InputDeckFilename = None):
         """
-        Writes input file
+        Writes input file.
 
-        InputDeckFilename: optional. Name of Q-Chem input file to write.
-        If None, will return the entire output file as a string,
+        @note The input deck will be necessary but possibly not sufficient to
+        reconstruct the requested calculation exactly. Section 3.1 of the Q-Chem
+        4.0 manual states that additional inputs absent from the input file may
+        be taken from @c $HOME/.qchemrc, or @c $QC/config/preferences, or
+        internal program defaults (which may be version-specific).
+
+        @param InputDeckFilename Name of Q-Chem input file to write.
+        Default: None; will return the entire output file as a string,
         i.e. same as calling __repr__()
         """
 
@@ -189,8 +205,45 @@ specified. Refusing to run Q-Chem.', outfilename)
     def __str__(self):
         return self.__repr__()
 
+## Documented user input section keywords
+# @sa Q-Chem 4.0 manual, Table 3.1 and Appendix C
+KnownInputSectionKeywords = ["molecule", "rem", "end", "basis", "cdft", "comment",
+"ecp", "empirical_dispersion", "external_charges", "force_field_params",
+"intracule", "isotopes", "multipole_field", "nbo", "occupied", "opt", "pcm",
+"pcm_solvent", "svp", "svpirf", "plots", "van_der_waals", "xc_functional"]
+
+#rem keywords which can be read"
+Reads = ["scf_guess", "geometry"]
+
+class QChemRemArray:
+    """
+    Container class for the @c $rem array
+    @sa Q-Chem 4.0 manual, Section 3.5
+    
+    Specifies type of calculation. with individual @c $rem variables.
+
+    The format of this block consists of lines of the form
+    @verbatim
+    REM_VARIABLE VALUE [comment]
+    @endverbatim
+
+    @note Additional @c $rem variables may be read in from .qchemrc and
+preferences.
+
+    @note  A line beginning with @c ! is a comment
+    """
 
 class QChemInputJob:
+    """
+
+    In the geometry block:
+    @todo
+    Q-Chem ignores commas and equal signs, and requires all distances, positions and
+    angles to be entered as Angstroms and degrees. unless @c INPUT_BOHR=TRUE in
+    @c $rem , in which case all lengths are assumed to be in bohr.
+
+    @sa Q-Chem 4.0 manual, Section 3.1.
+    """
 
     #Here is a subclass for the Rem block
     """
@@ -226,7 +279,21 @@ class QChemInputJob:
         #self.rem = self.QChemInputRemBlock() #TODO finish migration to RemBlock
 
     def isValid(self):
-        "Checks that data contained can be used to make a valid input deck"
+        """
+        Checks that data contained can be used to make a valid input deck
+        @todo
+        Section 3.2 of the Q-Chem 4.0 manual states that the net charge must be
+        -50 <= Z <= 50 (0 for neutral) and the spin multiplicity must be
+        1<=S<=10 (1 for a singlet).
+
+        @todo Accept @c READ @c filename in the geometry block
+        @sa Q-Chem 4.0 manual, Section 3.2.2
+
+        @todo Check rules for Cartesian and Z-Matrix coordinates
+        @sa Q-Chem 4.0 manual, Section 3.3-3.4
+
+
+        """
         return self.has_input_section('rem') and \
                self.has_input_section('molecule')
 

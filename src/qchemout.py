@@ -188,6 +188,8 @@ class _handler_Input(_superhandler):
     
     @returns string containing the Q-Chem Input.
 
+    @sa qchemin.py::QChemInput
+
     Sample output parsed:
     @verbatim
 --------------------------------------------------------------
