@@ -1,5 +1,9 @@
-doc/*
+doc
+openqube.egg-info
+dist
 *.pyc
 *.pyo
 *~
 \#*#
+.*.swp
+.*.swo
