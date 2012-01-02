@@ -295,7 +295,6 @@ class _handler_Geometry(_superhandler):
                 #This conversion to recarray doesn't work?!
                 #self.data = array(self.data, dtype=[('Element', str), 
                 # ('Coordinates', float, 3)])
-                print 'ohai flush'
                 return self.flush()
             else:
                 t = line.split()
