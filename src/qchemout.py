@@ -12,7 +12,7 @@ from numpy import array, hstack, zeros
 from numpy.linalg import norm
 import logging
 
-from data import eV
+from data import Angstrom, eV
 
 logging.basicConfig()
 logger = logging.getLogger(__name__)
@@ -279,7 +279,13 @@ class _handler_Geometry(_superhandler):
     @endverbatim
     """
     def trigger(self, line):
-        return 'Standard Nuclear Orientation (Angstroms)' in line
+        if 'Standard Nuclear Orientation (Angstroms)' in line:
+            self.Unit = Angstrom
+            return True
+        elif 'Standard Nuclear Orientation (Bohr)' in line:
+            self.Unit = 1.0
+            return True
+
     def handler(self, line):
         if self.data is None:
             if '-'*52 in line:
@@ -289,10 +295,12 @@ class _handler_Geometry(_superhandler):
                 #This conversion to recarray doesn't work?!
                 #self.data = array(self.data, dtype=[('Element', str), 
                 # ('Coordinates', float, 3)])
+                print 'ohai flush'
                 return self.flush()
             else:
                 t = line.split()
-                self.data.append([t[1],]+map(float, t[2:5]))
+                self.data.append([t[1],]+ \
+                        map(lambda x: float(x)*self.Unit, t[2:5]))
 
 
 class _handler_NumberOfElectrons(_superhandler):
@@ -509,7 +517,6 @@ class _handler_ModelChemistry(_superhandler):
 
         if 'Correlation:' in line:
             line = line[line.find('Correlation:'):]
-            print 'ohalp', line
             if '+' in line: #Combination specified
                 for component in line.split('+'):
                     for coefficient, functional in component.split():
@@ -518,7 +525,6 @@ class _handler_ModelChemistry(_superhandler):
                 self.data['Correlation'].append((1.0, line.strip()))
         
         else:
-            print 'ohai flush', self.data
             return self.flush()
 
 class _handler_SCFConvergence(_superhandler):
