@@ -509,24 +509,23 @@ class _handler_ModelChemistry(_superhandler):
 
     def handler(self, line):
         if 'Exchange:' in line:
-            exchange_part = line[line.find('Exchange:')+10:line.find('Correlation:')]
-            if '+' in exchange_part: #Combination specified
-                for component in line.split('+'):
-                    for coefficient, functional in component.split():
-                        self.data['Exchange'].append(float(coefficient), functional.strip())
-            else:
-                self.data['Exchange'].append((1.0, exchange_part.strip()))
+            exchange_part = line[line.find('Exchange:')+10:line.find('Correlation:')].strip()
+            try:
+                for component in exchange_part.split('+'):
+                    coefficient, functional = component.split()
+                    self.data['Exchange'].append((float(coefficient), functional.strip()))
+            except ValueError:
+                self.data['Exchange'].append((1.0, exchange_part))
 
         if 'Correlation:' in line:
-            line = line[line.find('Correlation:'):]
-            if '+' in line: #Combination specified
-                for component in line.split('+'):
-                    for coefficient, functional in component.split():
-                        self.data['Correlation'].append(float(coefficient), functional.strip())
-            else:
-                self.data['Correlation'].append((1.0, line.strip()))
-        
-        else:
+            correlation_part = line[line.find('Correlation:')+12:].strip()
+            try: #Combination specified
+                for component in correlation_part.split('+'):
+                    coefficient, functional = component.split()
+                    self.data['Correlation'].append((float(coefficient), functional.strip()))
+            except ValueError:
+                self.data['Correlation'].append((1.0, correlation_part))
+        if 'Exchange:' not in line and 'Correlation:' not in line:
             return self.flush()
 
 class _handler_SCFConvergence(_superhandler):

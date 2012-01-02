@@ -30,10 +30,15 @@ Elements = [x.upper() for x in \
 
 #The working assumption is that everything in the code is handled in atomic
 #units until it's time to print something output or interface
+#The convention is to mimic in the code how it would be written,
+#where possible, e.g.
+#1.2 * eV, 0.13 * Hartree, etc.
 
+Hartree = 1.0
 eV = 0.03674932534 #converts eV to Hartree
 Angstrom = 1.889725989
 Debye = 1/2.5417462
+HartreeToNm = 1239.8*eV
 
 ## If run as main, prints out all the elements
 if __name__ == '__main__':
