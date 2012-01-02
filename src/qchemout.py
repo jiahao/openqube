@@ -171,6 +171,9 @@ class _handler_JobSeparator(_superhandler):
     
     @returns jobid if detected.
 
+    @warning this is _not_ a reliable way to test if there are multiple jobs
+    because Q-Chem sometimes forgets to print this out (!!)
+
     Sample output parsed:
     @verbatim
 *************************************************************
