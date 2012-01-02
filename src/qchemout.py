@@ -172,7 +172,10 @@ class _handler_JobSeparator(_superhandler):
     @returns jobid if detected.
 
     @warning this is _not_ a reliable way to test if there are multiple jobs
-    because Q-Chem sometimes forgets to print this out (!!)
+    because this is sometimes lost in the output file. With Q-Chem 3.2 and 4.0,
+    running qchem input > output causes this line to go missing. Of course,
+    this can be fixed by rerunning it properly; nevertheless this can be an
+    issue.
 
     Sample output parsed:
     @verbatim
