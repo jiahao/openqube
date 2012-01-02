@@ -33,14 +33,26 @@ class QChemOutput:
         """
         self.filename = filename
         self.Data = []
-        if doAutoParse:
-            self.Parse()
+        try:
+            open(self.filename)
+            if doAutoParse:
+                self.Parse()
+        except IOError: #Must parse manually
+            pass
 
     def __repr__(self):
-        buf = []
+        if self.filename == '':
+            return 'No Q-Chem output loaded.'
+
+        buf = ['Filename: '+self.filename]
+
+        if len(self.Data) == 0:
+            buf.append('\nNo Q-Chem output perceived.')
+
         for name, data in self.Data:
             buf.append('Perceived data: '+name)
             buf.append(str(data))
+
         return '\n'.join(buf)
 
     def Parse(self, Handlers = None):
@@ -70,7 +82,7 @@ class QChemOutput:
                     if state is None:
                         for handler in Handlers:
                             if handler.trigger(line):
-                                print handler, 'triggered'
+                                logger.debug('Triggered handler:', str(handler))
                                 state = handler
                                 break
                     #if state is None: print state, line,
@@ -84,7 +96,6 @@ class QChemOutput:
             logger.error(error_msg)
             raise IOError, error_msg
 
-    
 class _superhandler:
     """
     Base class for Q-Chem output parser handler classes.
@@ -112,7 +123,8 @@ class _superhandler:
         @returns None each time it is called until it is ready to return data
         produced with flush()
         """
-        return self.flush() if line != ''
+        if line != '':
+            return self.flush()
 
     def flush(self):
         """
@@ -146,6 +158,29 @@ class _handler_QChemVersion(_superhandler):
     def trigger(self, line):
         if 'Q-Chem, Version' in line:
             self.data = line.split()[2][:-1]
+            return True
+        else:
+            return False
+
+    def handler(self, line):
+        return self.flush()
+
+class _handler_JobSeparator(_superhandler):
+    """
+    Parses the presence of a job separator in a batch job.
+    
+    @returns jobid if detected.
+
+    Sample output parsed:
+    @verbatim
+*************************************************************
+Job 2 of 2 
+*************************************************************
+    @endverbatim
+    """
+    def trigger(self, line):
+        if 'Job ' in line and ' of ' in line:
+            self.data = int(line.split()[1])
             return True
         else:
             return False
@@ -381,6 +416,9 @@ ing Cartesian d Gaussians")
         if 'Total QAlloc Memory Limit' in line:
             return self.flush()
 
+        elif 'Job number =' in line: #No more output
+            return self.flush()
+    
         elif 'There are' in line and 'basis functions' in line:
             self.NumBasis2 = int(line.split()[-3])
 
@@ -448,23 +486,39 @@ class _handler_ModelChemistry(_superhandler):
  Exchange:     0.2500 Hartree-Fock + 0.7500 PBE
  Correlation:  1.0000 PBE
     @endverbatim
+    Sample output parsed:
+    @verbatim
+ Exchange:  PBE      Correlation:  PBE
+    @endverbatim
     """
     def trigger(self, line):
         if 'Exchange:' in line:
             self.data = {'Exchange':[], 'Correlation':[]}
-            for x in line.split(':')[1].split('+'):
-                x = x.strip()
-                idx = x.find(' ')
-                self.data['Exchange'].append((float(x[:idx]), x[idx+1:]))
+            self.handler(line)
             return True
 
     def handler(self, line):
+        if 'Exchange:' in line:
+            exchange_part = line[line.find('Exchange:')+10:line.find('Correlation:')]
+            if '+' in exchange_part: #Combination specified
+                for component in line.split('+'):
+                    for coefficient, functional in component.split():
+                        self.data['Exchange'].append(float(coefficient), functional.strip())
+            else:
+                self.data['Exchange'].append((1.0, exchange_part.strip()))
+
         if 'Correlation:' in line:
-            for x in line.split(':')[1].split('+'):
-                x = x.strip()
-                idx = x.find(' ')
-                self.data['Correlation'].append((float(x[:idx]), x[idx+1:]))
+            line = line[line.find('Correlation:'):]
+            print 'ohalp', line
+            if '+' in line: #Combination specified
+                for component in line.split('+'):
+                    for coefficient, functional in component.split():
+                        self.data['Correlation'].append(float(coefficient), functional.strip())
+            else:
+                self.data['Correlation'].append((1.0, line.strip()))
+        
         else:
+            print 'ohai flush', self.data
             return self.flush()
 
 class _handler_SCFConvergence(_superhandler):
