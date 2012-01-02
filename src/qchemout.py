@@ -748,7 +748,11 @@ class ElectronicState:
         if self.OscillatorStrength > 0.0001:
             test = 2.0/3 * self.ExcitationEnergy * norm(self.TransitionDipole)**2 / self.OscillatorStrength
             assert abs(test - 1) < 0.15, 'Incorrect unit for transition dipole, discrepancy factor is '+str(test**0.5)
-            
+
+        #otherwise check to see if we actually parsed anything
+        if self.Energy is None:
+            return False
+
         return True
 
 
@@ -804,10 +808,9 @@ class _superhandler_ExcitedStates(_superhandler):
             mo_virt = int(line[x+1:y])
             self.State.Amplitudes[mo_occ, mo_virt] = amplitude
 
-        elif len(t) == 0:
-            # Terminate
-            assert self.State.isValid(), 'Error parsing electronic state'
-            self.data.append(self.State)
+        elif len(t) == 0: # Terminate
+            if self.State.isValid():
+                self.data.append(self.State)
         elif '-'*51 in line:
             if self.data is None:
                 self.data = []
