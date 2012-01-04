@@ -25,7 +25,8 @@ class QChemOutput:
         """
         Initialize by saving filename and checking that it exists.
         
-        Immediately begins parsing file, unless otherwise specified.
+        Immediately begins parsing file, unless otherwise specified or if the
+        file does not exist.
 
         @param filename Name of Q-Chem output file. Default: ''
         @param doAutoParse whether to immediately begin parsing. Default: True
@@ -809,6 +810,16 @@ class _superhandler_ExcitedStates(_superhandler):
     D(236) --> V(  2) amplitude =  0.8011
     D(238) --> V(  2) amplitude =  0.5895
     @endverbatim
+    
+    Sample output parsed:
+    @verbatim
+ Excited state   2: excitation energy (eV) =    0.6367
+    Total energy for state   2:   -621.892400035117
+    <S**2>     :  0.7536
+    Trans. Mom.: -0.0101 X  -0.0101 Y   0.0000 Z
+    Strength   :  0.0000
+    D( 12) --> S(  1) amplitude =  0.9993 beta
+    @endverbatim
     """
     def __init__(self, ExcitationName = None):
         """
@@ -822,6 +833,7 @@ class _superhandler_ExcitedStates(_superhandler):
     def trigger(self, line):
         return self.ExcitationName in line
     def handler(self, line):
+        global SpinMultiplicity
         t = line.split()
         if 'Excited state' in line and 'excitation energy (eV)' in line:
             self.State = ElectronicState()
@@ -831,19 +843,41 @@ class _superhandler_ExcitedStates(_superhandler):
             self.State.Energy = float(t[-1])
         elif 'Trans. Mom.:' in line:
             self.State.TransitionDipole = array(map(float, (t[2], t[4], t[6]))) 
-        elif len(t)>0 and t[0] == 'Multiplicity':
-            self.State.Multiplicity = SpinMultiplicity[t[-1]]
-        elif len(t)>0 and t[0] == 'Strength':
+        elif '<S**2>     :' in line:
+            #Convert S**2 to effective spin quantum number in terms of
+            #electron spins. For example <S**2>=3/4 = s(s+1) is solved
+            #by s = 1/2 and so the multiplicity is 2s = 1.
+            S2 = float(t[-1])
+            s = -0.5 + (S2 + 0.25)**0.5 #only one positive root
+            self.State.Multiplicity = 2*s
+        elif 'Multiplicity:' in line:
+            try:
+                self.State.Multiplicity = SpinMultiplicity[t[-1]]
+            except KeyError:
+                raise KeyError, 'Unknown spin multiplicity: '+t[-1]
+        elif 'Strength   :' in line:
             self.State.OscillatorStrength = float(t[-1])
         elif '-->' in line:
-            amplitude = float(t[-1])
+            if 'alpha' in line or 'beta' in line:
+                spin = t[-1]
+                amplitude = float(t[-2])
+            else:
+                spin = 'alpha' #Q-Chem's convention
+                amplitude = float(t[-1])
+
             x = line.find('(')
             y = line.find(')')
+            occ_type = line[x-1] #D = doubly occupied, S = singly occupied for open shell
+                                 #O = doubly occupied for closed shell
+
             mo_occ = int(line[x+1:y])
             x = line.find('(',y+1)
             y = line.find(')',y+1)
+            vir_type = line[x-1] #S = singly occupied for open shell
+                                 #V = doubly virtual for open and closed shell
             mo_virt = int(line[x+1:y])
-            self.State.Amplitudes[mo_occ, mo_virt] = amplitude
+
+            self.State.Amplitudes[occ_type, mo_occ, vir_type, mo_virt] = amplitude, spin
 
         elif len(t) == 0: # Terminate
             if self.State.isValid():
@@ -853,6 +887,8 @@ class _superhandler_ExcitedStates(_superhandler):
                 self.data = []
             else:
                 return self.flush()
+        else:
+            raise ValueError, "Don't know how to parse line:"+line
 
 class _handler_TDAExcitedStates(_superhandler_ExcitedStates):
     """
