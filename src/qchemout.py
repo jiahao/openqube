@@ -8,7 +8,7 @@ Jiahao Chen <jiahao@mit.edu> 2011-12-28
 ####################
 # Code starts here #
 ####################
-from numpy import array, hstack, zeros
+from numpy import array, diag, hstack, zeros, zeros_like
 from numpy.linalg import norm
 import logging
 
@@ -29,7 +29,6 @@ class QChemOutput:
 
         @param filename Name of Q-Chem output file. Default: ''
         @param doAutoParse whether to immediately begin parsing. Default: True
-        @throws IOError if file does not exist when parse.
         """
         self.filename = filename
         self.Data = []
@@ -58,10 +57,10 @@ class QChemOutput:
     def Parse(self, Handlers = None):
         """Finite state machine.
         
-        @param Handlers list of handlers. Default: None, in which the
-        internal handlers will be used.
-        All handler classes beginning with _handler_*() will be dynamically
-        instantiated when parsed.
+        @param Handlers list of handlers. Default: None.
+        The default is to instantiate all handler classes beginning with
+        _handler_* in the global namespace will be dynamically instantiated
+        when Parse() is called.
         """
 
         if Handlers is None:
@@ -141,7 +140,8 @@ class _superhandler:
         @note the flush operation is separated from the main handler in case
         the data needs to be flushed out manually.
         """
-        data, self.data = self.data, None
+        data = self.data
+        self.__init__()
         return self.__class__.__name__.replace('_handler_',''), data
 
 class _handler_QChemVersion(_superhandler):
@@ -655,15 +655,15 @@ def dict_to_matrix(mydict, offset = 1):
         
 
 class _handler_FEDCoupling(_superhandler):
-    """
+    r"""
     Parses couplings between electronic states as calculated using the Fragment
     Excitation Difference (FED) method.
    
     @sa http://pubs.acs.org/doi/abs/10.1021/jp076512i
 
-    @returns a dictionary with each key being duple of integers @f$(m, n)@f$
-    referring to the states being coupled and each corresponding value being a
-    duple of @f$\Delta X_{mn} @f$ and the coupling matrix element (in a.u.)
+    @returns a real symmetrix matrix with the fragment excitation differences
+    and a real symmetric matrix with the couplings. Both matrices are fully
+    populated.
     
     @f$\Delta X_{mn} @f$ is the difference in excitation number of the acceptor
     relative to the donor for the electronic transition @f$ m \rightarrow n @f$.
@@ -672,6 +672,14 @@ class _handler_FEDCoupling(_superhandler):
 
     Sample output parsed:
     @verbatim
+   Fragment Excitations of Singlet Excited States 
+ -------------------------------------------------
+   State         X(D)        X(A)          dX     
+ -------------------------------------------------
+      1     -0.999177   -1.000823    0.001646
+      2     -0.999515   -1.000485    0.000970
+ -------------------------------------------------
+ 
             Fragment Excitations of Transition Densities and
               FED Couplings Between Singlet Excited States
  ------------------------------------------------------------------------------
@@ -681,25 +689,50 @@ class _handler_FEDCoupling(_superhandler):
  ------------------------------------------------------------------------------
     @endverbatim
     """
+    def __init__(self):
+        _superhandler.__init__(self)
+        self.mode = 'Diagonal'
+        self.fed = None
+        self.numstates = 0
+        self.couplings = None
+
     def trigger(self, line):
-        return 'States        X12(D)      X12(A)        dX12    Coupling(eV)' \
-            in line
+        return '   State         X(D)        X(A)          dX ' in line
 
     def handler(self, line):
-        if '-'*78 in line:
-            if self.data is None:
-                self.data = dict()
+        t = line.split()
+        if self.mode == 'Diagonal':
+            if '-'*49 in line: #Diagonal terms
+                if self.fed is None:
+                    self.fed = list()
+                else:
+                    self.fed = diag(self.fed)
+                    self.mode = 'Coupling1'
             else:
-                #self.data = dict_to_matrix(self.data)
-                return self.flush()
-        else:
-            try:
-                t = line.split()
+                self.fed.append(float(t[-1]))
+                self.numstates += 1
+                assert self.numstates == int(t[0])
+        elif self.mode == 'Coupling1':
+            if '  States        X12(D)      X12(A)        dX12    Coupling(eV)' in line:
+                self.mode = 'Coupling2'
+        elif self.mode == 'Coupling2':
+            if '-'*78 in line:
+                if self.couplings is None: #Two stage trigger
+                    self.couplings = zeros_like(self.fed)
+                else:
+                    self.fed -= diag(diag(self.fed)) #The diagonal entries appear to be bogus?!
+                    self.fed += self.fed.T
+                    self.couplings += self.couplings.T
+                    self.data = self.fed, self.couplings
+                    return self.flush()
+            else:
                 state1, state2 = int(t[0]) - 1, int(t[1]) -1
-                self.data[(state1, state2)] = float(t[-2]), float(t[-1])*eV
-            except (IndexError, ValueError):
-                pass
+                self.fed[state1, state2] = float(t[4])
+                self.couplings[state1, state2] = float(t[5])*eV
 
+        else:
+            raise ValueError, 'Unknown parse mode: '+self.mode
+    
 
 class ElectronicState:
     """
@@ -750,7 +783,8 @@ class ElectronicState:
 
         if self.OscillatorStrength > 0.0001:
             test = 2.0/3 * self.ExcitationEnergy * norm(self.TransitionDipole)**2 / self.OscillatorStrength
-            assert abs(test - 1) < 0.15, 'Incorrect unit for transition dipole, discrepancy factor is '+str(test**0.5)
+            test = test**0.5
+            assert abs(test - 1) < 0.15, 'Incorrect unit for transition dipole, discrepancy factor is '+str(test)
 
         #otherwise check to see if we actually parsed anything
         if self.Energy is None:
@@ -1055,7 +1089,7 @@ class _handler_FinalBetaMOEigenvalues(_superhandler_matrix):
     """
     def __init__(self):
         _superhandler_matrix.__init__(self)
-        self.MatrixName = 'Final BetaMO Eigenvalues'
+        self.MatrixName = 'Final Beta MO Eigenvalues'
 
 class _handler_FinalAlphaMOCoefficients(_superhandler_matrix):
     """
