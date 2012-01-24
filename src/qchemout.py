@@ -55,6 +55,42 @@ class QChemOutput:
 
         return '\n'.join(buf)
 
+    #The following five methods make this emulate a dictionarylike object
+    def __getitem__(self, key, index = None):
+        """
+        Like the usual __getitem__ but returns all matches if there are
+        multiple matches.
+        """
+        try:
+            key, index_str = theinput
+            index =  int(index_str)
+        except ValueError:
+            key = theinput
+            index = None
+
+        matches = [item for label, item in self.Data if key == label]
+        if len(matches) == 0:
+            raise KeyError, str(key)
+        elif index is not None:
+            return matches[item, index]
+        elif len(matches) == 1:
+            return matches[0]
+        else:
+            return tuple(matches)
+
+    def __iter__(self):
+        for key, _ in self.Data:
+            yield key
+
+    def keys(self):
+        return [key for key, _ in self.Data]
+
+    def items(self):
+        return [key, value for key, value in self.Data]
+
+    def values(self):
+        return [value for _, value in self.Data]
+
     def Parse(self, Handlers = None):
         """Finite state machine.
         
@@ -174,9 +210,9 @@ class _handler_JobSeparator(_superhandler):
 
     @warning this is _not_ a reliable way to test if there are multiple jobs
     because this is sometimes lost in the output file. With Q-Chem 3.2 and 4.0,
-    running qchem input > output causes this line to go missing. Of course,
-    this can be fixed by rerunning it properly; nevertheless this can be an
-    issue.
+    running 'qchem input > output' causes this line to go missing. Of course,
+    this can be fixed by rerunning it properly with 'qchem input output';
+    nevertheless this can be an issue.
 
     Sample output parsed:
     @verbatim
