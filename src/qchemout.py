@@ -86,10 +86,10 @@ class QChemOutput:
         return [key for key, _ in self.Data]
 
     def items(self):
-        return [key, value for key, value in self.Data]
+        return [(key, value) for (key, value) in self.Data]
 
     def values(self):
-        return [value for _, value in self.Data]
+        return [value for (_, value) in self.Data]
 
     def Parse(self, Handlers = None):
         """Finite state machine.
@@ -601,7 +601,8 @@ class _handler_SCFConvergence(_superhandler):
                     idx += 5
                     message = line[idx:].strip()
                     if message != '': #Have message
-                        if message != 'Convergence criterion met':
+                        if message not in ['Convergence criterion met', 
+                               'Done RCA. Switching to DIIS']:
                             print 'ERROR', message
                 except ValueError:
                     pass
