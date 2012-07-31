@@ -56,23 +56,27 @@ class QChemOutput:
         return '\n'.join(buf)
 
     #The following five methods make this emulate a dictionarylike object
-    def __getitem__(self, key, index = None):
+    def __getitem__(self, thekey):
         """
         Like the usual __getitem__ but returns all matches if there are
         multiple matches.
+
+        If the key is a tuple of the form (str, int), the str is interpreted
+        as the actual key and the int is an index out of the possible matches
         """
+
         try:
-            key, index_str = theinput
-            index =  int(index_str)
-        except ValueError:
-            key = theinput
-            index = None
+            assert len(thekey) == 2
+            key, index = thekey[0], int(thekey[1])
+        except (AssertionError, ValueError, IndexError):
+            key, index = thekey, None
 
         matches = [item for label, item in self.Data if key == label]
+        print key, index
         if len(matches) == 0:
             raise KeyError, str(key)
         elif index is not None:
-            return matches[item, index]
+            return matches[index]
         elif len(matches) == 1:
             return matches[0]
         else:
@@ -1213,6 +1217,49 @@ class _handler_SCFEnergyGradient(_superhandler_matrix):
         _superhandler_matrix.__init__(self)
         self.MatrixName = 'Gradient of SCF Energy'
 
+class _handler_OrbitalEnergies(_superhandler):
+    """
+    Parses orbital energies
+
+    @returns a tuple containing
+        0: a numpy array of Alpha MO energies
+        1: a numpy array of Beta MO energies (empty for spin-restricted)
+        2: index of the Alpha HOMO
+        3: index of the Beta HOMO (None for spin-restricted)
+
+    TODO I think this only works for spin-restricted data
+    """
+    def __init__(self):
+        _superhandler.__init__(self)
+        self.state = 'seek'
+        self.data = [ [], [], None, None]
+
+    def trigger(self, line):
+        return 'Orbital Energies (a.u.)' in line
+
+    def handler(self, line):
+        if self.state == 'seek':
+            if 'Alpha MOs' in line:
+                self.dataIndex = 0
+            elif 'Beta MOs' in line:
+                self.dataIndex = 1
+            elif '-- Occupied --' in line:
+                self.state = 'read'
+        elif self.state == 'read':
+            if '-- Virtual --' in line:
+                #Store index of HOMO
+                self.data[2 + self.dataIndex] = len(self.data[self.dataIndex]) - 1
+                return
+            
+            if '-' * 60 in line:
+                #Convert to numpy arrays
+                self.data[0] = array(self.data[0])
+                self.data[1] = array(self.data[1])
+                return self.flush()
+
+            for energy in map(float, line.split()):
+                self.data[self.dataIndex].append(energy)
+                
 
 # Run as standalone
 if __name__ == '__main__':
