@@ -499,7 +499,7 @@ def QChemInputForElectrostaticEmbedding(ResID, CHARMM_CARD_file,
     If it is a QChemInput object, then it will be modified. \
     If not specified, a new QChemInput object will be created.
 
-    @param NewFileName A new filename for InputDeck. (Optional.)
+    @param QChemInputFileName A new filename for InputDeck. (Optional.)
 
     @returns A Q-Chem input deck that is ready to be written and executed.
 
@@ -657,7 +657,6 @@ skip_charge_self_interact true
 0.
 1. 0 0 s
 """)
-
 
     return Q
 

@@ -153,6 +153,7 @@ class _superhandler:
         @returns Boolean to see if anything in the current line is recognized
         as the start of some data block.
         """
+        #pylint: disable=R0201
         return line != ''
 
     def handler(self, line):
@@ -449,7 +450,7 @@ class _handler_GaussianBasis(_superhandler):
         self.BasisName = ''
         self.dspher = True #Use spherical d Gaussians
         self.NumBasis = None
-        self.NumBasis2= None
+        self.NumBasis2 = None
         self.thisAtom = None
         self.thisAtomBasisCount = None
         self.thisL = None
@@ -742,6 +743,7 @@ class _handler_FEDCoupling(_superhandler):
         return '   State         X(D)        X(A)          dX ' in line
 
     def handler(self, line):
+        #pylint: disable=E1103
         t = line.split()
         if self.mode == 'Diagonal':
             if '-'*49 in line: #Diagonal terms
@@ -912,8 +914,8 @@ class _superhandler_ExcitedStates(_superhandler):
                                  #O = doubly occupied for closed shell
 
             mo_occ = int(line[x+1:y])
-            x = line.find('(',y+1)
-            y = line.find(')',y+1)
+            x = line.find('(', y+1)
+            y = line.find(')', y+1)
             vir_type = line[x-1] #S = singly occupied for open shell
                                  #V = doubly virtual for open and closed shell
             mo_virt = int(line[x+1:y])
@@ -1040,7 +1042,7 @@ class _superhandler_matrix(_superhandler):
     """
     Superclass for parsers of matrices.
 
-    @returns matrix as a @code numpy.ndarray
+    @returns matrix as a @code numpy.ndarray @endcode
 
     Sample output parsed:
     @verbatim
